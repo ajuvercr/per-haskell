@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 7874fec87a7dad88e1a7ce5fecc8cf2edd546814f483c79f0ff9da5ca6da3c34
+-- hash: 624038b798965724a91fb2473ed1c209726666056782bf8038d8cced78aab8ea
 
 name:           per-haskell
 version:        0.1.0.0
@@ -28,6 +28,7 @@ source-repository head
 library
   exposed-modules:
       Lib
+      Planet
       Types
   other-modules:
       Paths_per_haskell
