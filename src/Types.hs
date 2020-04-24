@@ -8,6 +8,7 @@ module Types
     , Moves(..)
     , encodeMoves
     , decodeState
+    , fromExpeditions
     )
 where
 
@@ -82,6 +83,10 @@ instance ToJSON Move where
     toJSON Move {..} =
         object ["origin" .= from, "destination" .= to, "ship_count" .= force]
 
+-- Make a move from an expedition
+fromExpedition :: Expedition -> Move
+fromExpedition (Expedition _ from to _ _ force) = Move { .. }
+
 
 ---- Moves ----
 
@@ -89,9 +94,16 @@ newtype Moves = Moves { moves :: [Move] } deriving (Show)
 instance ToJSON Moves where
     toJSON Moves {..} = object ["moves" .= moves]
 
-
 encodeMoves :: Moves -> String
 encodeMoves = BLU.toString . encode
 
 decodeState :: String -> Either String State
 decodeState = eitherDecode . BLU.fromString
+
+-- Expeditions to Moves only the ones with a negative id
+fromExpeditions :: [Expedition] -> Moves
+fromExpeditions es = Moves { moves = (map fromExpedition $ onlySmallExps es) }
+
+-- Filter expeditions on negative id
+onlySmallExps :: [Expedition] -> [Expedition]
+onlySmallExps es = filter (\x -> Types.id x == (-1)) es

@@ -2,9 +2,11 @@ module Planet
     ( planetPower
     , distance
     , doSimple
+    , doNotSoSimple
     )
 where
 
+import           Debug.Trace
 import           Types
 import           Control.Applicative
 
@@ -34,8 +36,14 @@ neutral = filter (\x -> 0 == owner x)
 
 
 -- Filter all your planets
+yours :: State -> [Planet]
+yours (State planets _) = your planets
+
 your :: [Planet] -> [Planet]
 your = filter (\x -> 1 == owner x)
+
+notYours :: State -> [Planet]
+notYours (State planets _) = notYour planets
 
 notYour :: [Planet] -> [Planet]
 notYour = filter (\x -> 1 /= owner x)
@@ -86,7 +94,15 @@ mPush (Just a) xs = a:xs
 
 smallExp :: State -> String -> String -> Int -> Expedition
 smallExp state origin destination
-    = Expedition 0 origin destination
+    = Expedition (-1) origin destination
         (distance (getFromName state origin)
             (getFromName state destination))
-        0
+        1   -- this is sender, not ship_count
+
+-- Do tryPlanet over all your planets, folding on state
+doNotSoSimple :: State -> Moves
+doNotSoSimple state = fromExpeditions $ Types.epxs $ foldl tryPlanet state $ yours state
+
+-- Main reduce function
+tryPlanet :: State -> Planet -> State
+tryPlanet s ps = traceShow ps s

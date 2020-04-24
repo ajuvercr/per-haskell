@@ -1,1 +1,1 @@
-{ "nop": 2, "name": "It stole my heart", "map": "maps/hex.json", "max_turns": 2000 }
+{ "nop": 2, "name": "It stole my heart", "map": "maps/Hex2.json", "max_turns": 200 }

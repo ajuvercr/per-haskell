@@ -27,6 +27,7 @@ handleLine :: String -> Either String String
 handleLine x = mapRight (encodeMoves . handleState) (decodeState x)
 
 handleState :: State -> Moves
-handleState x = case doSimple x of
-    Nothing -> Moves []
-    Just a -> Moves [a]
+handleState = doNotSoSimple
+-- handleState x = case doSimple x of
+--     Nothing -> Moves []
+--     Just a -> Moves [a]

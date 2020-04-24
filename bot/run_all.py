@@ -13,9 +13,9 @@ except Exception:
 
 processes = []
 
-for player in data["players"]:
+for i, player in enumerate(data["players"]):
     processes.append(
-        subprocess.Popen(["./run.sh", str(player)])
+        subprocess.Popen([f"./run{i}.sh", str(player)])
     )
 
 for p in processes:
