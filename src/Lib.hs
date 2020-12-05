@@ -23,11 +23,15 @@ perHaskell = do
         Left x -> hPutStrLn stderr x
     perHaskell
 
+
 handleLine :: String -> Either String String
 handleLine x = mapRight (encodeMoves . handleState) (decodeState x)
 
+
 handleState :: State -> Moves
-handleState = doNotSoSimple
+-- handleState = doNotSoSimple
+
 -- handleState x = case doSimple x of
 --     Nothing -> Moves []
 --     Just a -> Moves [a]
+handleState x = Moves $ doLessSimple x

@@ -102,7 +102,7 @@ decodeState = eitherDecode . BLU.fromString
 
 -- Expeditions to Moves only the ones with a negative id
 fromExpeditions :: [Expedition] -> Moves
-fromExpeditions es = Moves { moves = (map fromExpedition $ onlySmallExps es) }
+fromExpeditions es = Moves { moves = map fromExpedition $ onlySmallExps es }
 
 -- Filter expeditions on negative id
 onlySmallExps :: [Expedition] -> [Expedition]
