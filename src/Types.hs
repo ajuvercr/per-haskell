@@ -1,109 +1,63 @@
-{-# LANGUAGE OverloadedStrings, RecordWildCards #-}
-
 module Types
-    ( Planet(..)
-    , Expedition(..)
-    , State(..)
-    , Move(..)
-    , Moves(..)
-    , encodeMoves
-    , decodeState
-    , fromExpeditions
+    ( Coord
+    , Alliance (..)
+    , Planet (..)
+    , Action (..)
+    , distance
+    , transformInput
     )
 where
 
-import           Data.Aeson
-import           Data.ByteString.Lazy.UTF8     as BLU -- from utf8-string
+import Json
+import Util
 
+type Coord = (Float, Float)
 
----- Planet ----
+data Alliance  = Hostile | Friendly | Neutral deriving (Show, Eq)
 
 data Planet =
-    Planet { name               :: String
-           , x                  :: Float
-           , y                  :: Float
-           , owner              :: Int
-           , power              :: Int
-             } deriving (Show)
-
-instance FromJSON Planet where
-    parseJSON = withObject "planet" $ \o -> do
-        name  <- o .: "name"
-        x     <- o .: "x"
-        y     <- o .: "y"
-        owner <- o .:? "owner" .!= 0
-        power <- o .: "ship_count"
-        return Planet { .. }
+     Planet { name      :: String
+            , loc       :: Coord
+            , alliance  :: Alliance
+            , power     :: [Int]
+            } deriving (Show)
 
 
----- Expedition ----
+data Action = Action
+            { offensive :: Bool
+            , participation :: [(Planet, Int)]
+            , target :: Planet
+            } deriving (Show)
 
-data Expedition =
-    Expedition { id              :: Int
-               , origin          :: String
-               , destination     :: String
-               , ttl             :: Int
-               , sender          :: Int
-               , ship_count      :: Int
-               } deriving (Show)
+distance :: Planet -> Planet -> Int
+distance p1 p2 =
+    let dx = x1 - x2
+        dy = y1 - y2
+    in  ceiling . sqrt $ dx * dx + dy * dy
+    where
+        (x1, y1) = loc p1
+        (x2, y2) = loc p2
 
-instance FromJSON Expedition where
-    parseJSON = withObject "expedition" $ \o -> do
-        id          <- o .: "id"
-        origin      <- o .: "origin"
-        destination <- o .: "destination"
-        ttl         <- o .: "turns_remaining"
-        sender      <- o .: "owner"
-        ship_count  <- o .: "ship_count"
-        return Expedition { .. }
-
-
----- State ----
-
-data State =
-    State { planets                 :: [Planet]
-          , epxs                    :: [Expedition]
-          } deriving (Show)
-
-instance FromJSON State where
-    parseJSON = withObject "state" $ \o -> do
-        planets <- o .: "planets"
-        epxs    <- o .: "expeditions"
-        return State { .. }
+getAlliance :: Int -> Alliance
+getAlliance 0 = Neutral
+getAlliance 1 = Friendly
+getAlliance _ = Hostile
 
 
----- Move ----
 
-data Move =
-    Move { from                     :: String
-         , to                       :: String
-         , force                    :: Int
-         } deriving (Show)
-instance ToJSON Move where
-    toJSON Move {..} =
-        object ["origin" .= from, "destination" .= to, "ship_count" .= force]
+transformPlanet :: [JsonExpedition] -> JsonPlanet -> Planet
+transformPlanet exps (JsonPlanet name x y owner power) = Planet name (x, y) alliance power
+    where
+        alliance = getAlliance owner
+        base = if alliance == Neutral
+               then repeat 0
+               else [1..]
+        important = filter (\e -> destination e == name) exps
+        update base exp = if sender exp == owner
+                          then applyAt (+ ship_count exp) (ttl exp) base
+                          else applyAt (subtract $ ship_count exp) (ttl exp) base
+        power = foldl update base important
 
--- Make a move from an expedition
-fromExpedition :: Expedition -> Move
-fromExpedition (Expedition _ from to _ _ force) = Move { .. }
 
-
----- Moves ----
-
-newtype Moves = Moves { moves :: [Move] } deriving (Show)
-instance ToJSON Moves where
-    toJSON Moves {..} = object ["moves" .= moves]
-
-encodeMoves :: Moves -> String
-encodeMoves = BLU.toString . encode
-
-decodeState :: String -> Either String State
-decodeState = eitherDecode . BLU.fromString
-
--- Expeditions to Moves only the ones with a negative id
-fromExpeditions :: [Expedition] -> Moves
-fromExpeditions es = Moves { moves = map fromExpedition $ onlySmallExps es }
-
--- Filter expeditions on negative id
-onlySmallExps :: [Expedition] -> [Expedition]
-onlySmallExps es = filter (\x -> Types.id x == (-1)) es
+transformInput :: JsonState -> [Planet]
+transformInput (JsonState planets exps) = map (transformPlanet exps) planets
