@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 8085d76a6b233badb85fb6c1030a89c3ac66996ba12d8c60e1d3b16a120317e3
+-- hash: ec94627e6e550c9891deff4d461884aacd48fd6149b091964be035cadf314d87
 
 name:           per-haskell
 version:        0.1.0.0
@@ -27,8 +27,10 @@ source-repository head
 
 library
   exposed-modules:
+      Constrains
       Json
       Lib
+      Logic
       Types
       Util
   other-modules:
@@ -39,8 +41,12 @@ library
       aeson
     , base >=4.7 && <5
     , bytestring
+    , containers
     , either
     , extra
+    , generic-lens
+    , lens
+    , mtl
     , text
     , time
     , utf8-string
@@ -55,8 +61,12 @@ executable per-haskell-exe
       aeson
     , base >=4.7 && <5
     , bytestring
+    , containers
     , either
     , extra
+    , generic-lens
+    , lens
+    , mtl
     , per-haskell
     , text
     , time
@@ -72,8 +82,12 @@ executable test-exe
       aeson
     , base >=4.7 && <5
     , bytestring
+    , containers
     , either
     , extra
+    , generic-lens
+    , lens
+    , mtl
     , per-haskell
     , text
     , time
@@ -92,8 +106,12 @@ test-suite per-haskell-test
       aeson
     , base >=4.7 && <5
     , bytestring
+    , containers
     , either
     , extra
+    , generic-lens
+    , lens
+    , mtl
     , per-haskell
     , text
     , time

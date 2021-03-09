@@ -19,7 +19,6 @@ minBy = xBy (<)
 maxBy :: Ord b  => (a -> b) -> [a] -> Maybe a
 maxBy = xBy (>)
 
-
 mCons :: Maybe a -> [a] -> [a]
 mCons ma xs = maybe xs (:xs) ma
 

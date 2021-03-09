@@ -28,6 +28,10 @@ dependencies:
 - either
 - time
 - extra
+- lens
+- generic-lens
+- containers
+- mtl
 
 library:
   source-dirs:
