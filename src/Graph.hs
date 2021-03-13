@@ -127,7 +127,7 @@ topoDfs' topo start = St.evalState (dfs topo start) Set.empty
             St.modify (Set.insert start)
             let children = map snd $ topoLeaving topo start
                 f cum child = do
-                    done <- Set.member start <$> St.get
+                    done <- Set.member child <$> St.get
                     if done
                     then return cum
                     else dfs topo child
