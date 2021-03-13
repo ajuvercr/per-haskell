@@ -5,6 +5,7 @@ import Graph
 
 main :: IO ()
 main = do
+    print $ topoDfs' topo 0
     print $ topoDfs topo 0
     print $ topoBfs topo 0
     where

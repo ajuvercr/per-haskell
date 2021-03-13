@@ -112,3 +112,23 @@ topoDfs topo start = St.evalState (dfs topo start) Set.empty
 
         step :: (Ix i) => GraphTopo i -> i -> Seq (i, i)
         step topo start = Seq.fromList $ topoLeaving topo start
+
+
+-- procedure DFS(G, v) is
+--     label v as discovered
+--     for all directed edges from v to w that are in G.adjacentEdges(v) do
+--         if vertex w is not labeled as discovered then
+--             recursively call DFS(G, w)
+topoDfs' :: (Show i, Ix i) => GraphTopo i -> i -> Seq i
+topoDfs' topo start = St.evalState (dfs topo start) Set.empty
+    where
+        dfs :: (Show i, Ix i) => GraphTopo i -> i -> St.State (Set.Set i) (Seq i)
+        dfs topo start = do
+            St.modify (Set.insert start)
+            let children = map snd $ topoLeaving topo start
+                f cum child = do
+                    done <- Set.member start <$> St.get
+                    if done
+                    then return cum
+                    else dfs topo child
+            foldM f Seq.empty children
