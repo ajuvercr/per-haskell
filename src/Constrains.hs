@@ -26,7 +26,7 @@ type Action = (Int, [Planet])
 type Planet = (String, Int)
 
 -- | Map indicating what planet has to satisfy what constraints
-type ConstraintMap = Map Planet [GroupConstraint]
+type ConstraintMap = Map Action [GroupConstraint]
 
 -- | Typical constraint concerning group bondage
 type GroupConstraint = (Int, [Planet])
