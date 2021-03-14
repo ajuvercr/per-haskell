@@ -17,6 +17,8 @@ import qualified Control.Monad.State.Lazy as St
 import Control.Monad
 import Data.Functor
 import Debug.Trace
+import Util (if')
+import Control.Applicative ((<|>))
 
 data Graph i v e = Graph
     { size     :: (i, i)
@@ -114,21 +116,29 @@ topoDfs topo start = St.evalState (dfs topo start) Set.empty
         step topo start = Seq.fromList $ topoLeaving topo start
 
 
--- procedure DFS(G, v) is
---     label v as discovered
---     for all directed edges from v to w that are in G.adjacentEdges(v) do
---         if vertex w is not labeled as discovered then
---             recursively call DFS(G, w)
-topoDfs' :: (Show i, Ix i) => GraphTopo i -> i -> Seq i
+topoDfs' :: (Show i, Ix i) => GraphTopo i -> i -> Seq (i, i)
 topoDfs' topo start = St.evalState (dfs topo start) Set.empty
     where
-        dfs :: (Show i, Ix i) => GraphTopo i -> i -> St.State (Set.Set i) (Seq i)
+        dfs :: (Show i, Ix i) => GraphTopo i -> i -> St.State (Set.Set i) (Seq (i, i))
         dfs topo start = do
             St.modify (Set.insert start)
             let children = map snd $ topoLeaving topo start
                 f cum child = do
                     done <- Set.member child <$> St.get
-                    if done
-                    then return cum
-                    else dfs topo child
+                    rest <- if' done (return Seq.empty) $ ((start, child) Seq.<|) <$> dfs topo child
+                    return $ rest Seq.>< cum
             foldM f Seq.empty children
+
+
+topoPath :: (Show i, Ix i) => GraphTopo i -> i -> i -> Maybe [i]
+topoPath topo start end = St.evalState (path topo start end) Set.empty
+    where
+        path :: (Show i, Ix i) => GraphTopo i -> i -> i -> St.State (Set.Set i) (Maybe [i])
+        path topo start end | start == end = return $ Just [start]
+        path topo start end = do
+            St.modify (Set.insert start)
+            let children = map snd $ topoLeaving topo start
+                f child = do
+                    done <- Set.member child <$> St.get
+                    if' done (return Nothing) $ ((start:) <$>) <$> path topo child end
+            foldl1 (<|>) <$> mapM f children

@@ -3,6 +3,7 @@ where
 
 import           Control.Applicative
 import Data.Time.Clock.POSIX (getPOSIXTime)
+import Data.Monoid
 
 if' :: Bool -> a -> a -> a
 if' True  x _ = x
@@ -35,3 +36,8 @@ applyAt :: (a -> a) -> Int -> [a] -> [a]
 applyAt _ _ []     = []
 applyAt f 0 (x:xs) = f x:xs
 applyAt f i (x:xs) = x : applyAt f (i-1) xs
+
+
+orElse :: Maybe a -> a -> a
+orElse (Just x) _ = x
+orElse _ x = x
