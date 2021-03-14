@@ -20,36 +20,6 @@ import Debug.Trace
 import Util (if')
 import Control.Applicative ((<|>))
 
-data Graph i v e = Graph
-    { size     :: (i, i)
-    , edges    :: Array (i, i) (Maybe e)
-    , nodes    :: Array i      v
-    , nodesInv :: Map   v      i
-    } deriving (Show)
-
-
-transpose2 :: ((a1, a2), (b1, b2)) -> ((a1, b1), (a2, b2))
-transpose2 ((a, b), (c,d)) = ((a,c), (b,d))
-
-buildGraph :: (Ix i, Ord v) => (i, i) -> [v] -> Graph i v e
-buildGraph size vs = Graph size (A.listArray (transpose2 (size, size)) (repeat Nothing)) (A.listArray size vs) $ M.fromList (zip vs (range size))
-
-leaving :: (Ix i, Ord v) => Graph i v e -> v -> [(e, i, v)]
-leaving graph v = leaving' graph $ nodesInv graph M.! v
-
-leaving' :: Ix i => Graph i v e -> i -> [(e, i, v)]
-leaving' Graph {edges=edges, size=size, nodes=nodes} i = mapMaybe f [(i, j) | j <- range size]
-    where f (i,j) = (,j,nodes A.! j) <$> edges A.! (i,j)
-
-
-entering :: (Ix i, Ord v) => Graph i v e -> v -> [(e, i, v)]
-entering graph v = entering' graph $ nodesInv graph M.! v
-
-entering' :: Ix i => Graph i v e -> i -> [(e, i, v)]
-entering' Graph {edges=edges, size=size, nodes=nodes} j = mapMaybe f [(i, j) | i <- range size]
-    where f (i,j) = (,i,nodes A.! i) <$> edges A.! (i,j)
-
-
 
 type GraphTopo i = Array (i, i) Bool
 
@@ -60,8 +30,14 @@ buildTopo start end = A.listArray ((start, start), (end, end)) (repeat False)
 addEdge :: Ix i => GraphTopo i -> (i, i) -> GraphTopo i
 addEdge topo s = topo A.// [(s, True)]
 
+addEdges :: Ix i => GraphTopo i -> [(i, i)] -> GraphTopo i
+addEdges topo ss = topo A.// map (,True) ss
+
 removeEdge :: Ix i => GraphTopo i -> (i, i) -> GraphTopo i
 removeEdge topo s = topo A.// [(s, False)]
+
+removeEdges :: Ix i => GraphTopo i -> [(i, i)] -> GraphTopo i
+removeEdges topo ss = topo A.// map (,False) ss
 
 
 topoLeaving :: Ix i => GraphTopo i -> i -> [(i, i)]
@@ -141,4 +117,41 @@ topoPath topo start end = St.evalState (path topo start end) Set.empty
                 f child = do
                     done <- Set.member child <$> St.get
                     if' done (return Nothing) $ ((start:) <$>) <$> path topo child end
-            foldl1 (<|>) <$> mapM f children
+            foldl (<|>) Nothing <$> mapM f children
+
+
+-- No float please thanks
+type Flow i a = M.Map (i, i) a
+
+
+maxFlow :: (Show i, Ix i) => GraphTopo i -> i -> i -> Flow i Int -> Flow i Int
+maxFlow topo start end flow = M.map fst $ St.evalState (maxFlow'' start end (M.map(0,) flow)) topo
+    where
+        diffF :: (Ord i) => Flow i (Int, Int) -> (i, i) -> Int
+        diffF flow ix = u - l
+            where (l, u) = flow M.! ix
+
+        maxF :: (Ord i) => Flow i (Int, Int) -> (i, i) -> Bool
+        maxF flow ix = l == u
+            where (l, u) = flow M.! ix
+
+        maxFlow'' :: (Show i, Ix i) => i -> i -> Flow i (Int, Int) -> St.State (GraphTopo i) (Flow i (Int, Int))
+        maxFlow'' start end flow = do
+            topo <- St.get
+            case topoPath topo start end of
+                Nothing   -> return flow
+                Just path -> do
+                    let fp = zip path $ tail path
+                        minDiff = minimum $ map (diffF flow) fp
+                        flow' = M.mapWithKey (\k (l, u) -> if' (k `elem` fp) (l+minDiff, u) (l, u)) flow
+                        f topo = removeEdges topo $ filter (maxF flow') fp
+                    St.modify f
+                    maxFlow'' start end flow'
+
+maxFlow' :: (Show i, Ix i) => Flow i Int -> i -> i -> Flow i Int
+maxFlow' flow start end = maxFlow topo start end flow
+    where
+        ks = M.keys flow
+        min' = minimum $ map (uncurry min) ks
+        max' = maximum $ map (uncurry max) ks
+        topo = buildTopo min' max' `addEdges` ks
