@@ -1,5 +1,5 @@
 
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TupleSections, BangPatterns #-}
 module Graph where
 
 import GHC.Arr ( Array )
@@ -16,9 +16,9 @@ import qualified Data.Set as Set
 import qualified Control.Monad.State.Lazy as St
 import Control.Monad
 import Data.Functor
-import Debug.Trace
-import Util (if')
+import Util (if', applyAll)
 import Control.Applicative ((<|>))
+import qualified Control.Arrow as Data.Bifunctor
 
 
 type GraphTopo i = Array (i, i) Bool
@@ -39,17 +39,24 @@ removeEdge topo s = topo A.// [(s, False)]
 removeEdges :: Ix i => GraphTopo i -> [(i, i)] -> GraphTopo i
 removeEdges topo ss = topo A.// map (,False) ss
 
-
 topoLeaving :: Ix i => GraphTopo i -> i -> [(i, i)]
 topoLeaving topo start = filter (topo A.!) [(start, e) | e <- range (s, e)]
     where
         ((s, _), (e, _)) = A.bounds topo
 
 
-topoEntering :: Ix i => GraphTopo i -> i -> Seq i
-topoEntering topo end = Seq.fromList $ map fst $ filter (topo A.!) [(s, end) | s <- range bounds]
+topoLeaving' :: Ix i => GraphTopo i -> i -> [i]
+topoLeaving' topo = map snd . topoLeaving topo
+
+
+topoEntering :: Ix i => GraphTopo i -> i -> [(i, i)]
+topoEntering topo end = filter (topo A.!) [(s, end) | s <- range (s, e)]
     where
-        (bounds, _) = A.bounds topo
+        ((s, _), (e, _)) = A.bounds topo
+
+
+topoEntering' :: Ix i => GraphTopo i -> i -> [i]
+topoEntering' topo = map snd . topoEntering topo
 
 
 topoBfs :: (Show i, Ix i) => GraphTopo i -> i -> Seq (i, i)
@@ -105,18 +112,18 @@ topoDfs' topo start = St.evalState (dfs topo start) Set.empty
                     return $ rest Seq.>< cum
             foldM f Seq.empty children
 
-
-topoPath :: (Show i, Ix i) => GraphTopo i -> i -> i -> Maybe [i]
+topoPath :: (Show i, Ord i) => (i -> [(i, (i, i) -> b)]) -> i -> i -> Maybe [b]
 topoPath topo start end = St.evalState (path topo start end) Set.empty
     where
-        path :: (Show i, Ix i) => GraphTopo i -> i -> i -> St.State (Set.Set i) (Maybe [i])
-        path topo start end | start == end = return $ Just [start]
+        path :: (Show i, Ord i) => (i -> [(i, (i, i) -> b)]) -> i -> i -> St.State (Set.Set i) (Maybe [b])
+        path topo start end | start == end = return $ Just []
         path topo start end = do
             St.modify (Set.insert start)
-            let children = map snd $ topoLeaving topo start
-                f child = do
+        -- let children = map snd $ topoLeaving topo start
+            let children = topo start
+                f (child, trans) = do
                     done <- Set.member child <$> St.get
-                    if' done (return Nothing) $ ((start:) <$>) <$> path topo child end
+                    if' done (return Nothing) $ ((trans (start, child):) <$>) <$> path topo child end
             foldl (<|>) Nothing <$> mapM f children
 
 
@@ -124,29 +131,39 @@ topoPath topo start end = St.evalState (path topo start end) Set.empty
 type Flow i a = M.Map (i, i) a
 
 
+
 maxFlow :: (Show i, Ix i) => GraphTopo i -> i -> i -> Flow i Int -> Flow i Int
-maxFlow topo start end flow = M.map fst $ St.evalState (maxFlow'' start end (M.map(0,) flow)) topo
+maxFlow topo start end flow = M.map fst $ maxFlow'' topo start end (M.map(0,) flow)
     where
-        diffF :: (Ord i) => Flow i (Int, Int) -> (i, i) -> Int
-        diffF flow ix = u - l
-            where (l, u) = flow M.! ix
+        maxFlow'' !topo !start !end !flow = case topoPath (leavingF topo flow) start end of
+            Nothing -> flow
+            -- [(key, max throughput, how to apply)]
+            Just path -> maxFlow'' topo start end newFlow
+                where
+                    minDiff = minimum $ map (\(_, x, _) -> x) path
+                    path' = map (\(key, _, f) -> (key, Data.Bifunctor.first (f minDiff))) path
+                    newFlow = applyAll flow path'
 
-        maxF :: (Ord i) => Flow i (Int, Int) -> (i, i) -> Bool
-        maxF flow ix = l == u
-            where (l, u) = flow M.! ix
+        goodForward :: (Ord i) => Flow i (Int, Int) -> (i, i) -> Maybe (i, (i, i) -> ((i, i), Int, Int -> Int -> Int))
+        goodForward flow i
+            -- (key, capacity - flow, apply plus)
+            | l < u     = Just (snd i, \key -> (key, uncurry (flip (-)) $ flow M.! key, (+)))
+            | otherwise = Nothing
+            where (l, u) = flow M.! i
 
-        maxFlow'' :: (Show i, Ix i) => i -> i -> Flow i (Int, Int) -> St.State (GraphTopo i) (Flow i (Int, Int))
-        maxFlow'' start end flow = do
-            topo <- St.get
-            case topoPath topo start end of
-                Nothing   -> return flow
-                Just path -> do
-                    let fp = zip path $ tail path
-                        minDiff = minimum $ map (diffF flow) fp
-                        flow' = M.mapWithKey (\k (l, u) -> if' (k `elem` fp) (l+minDiff, u) (l, u)) flow
-                        f topo = removeEdges topo $ filter (maxF flow') fp
-                    St.modify f
-                    maxFlow'' start end flow'
+        goodBackwards :: (Ord i) => Flow i (Int, Int) -> (i, i) -> Maybe (i, (i, i) -> ((i, i), Int, Int -> Int -> Int))
+        goodBackwards flow (i, j)
+            -- (inverted key 'back edge', current flow, apply minus)
+            | l > 0     = Just (i, \(i, j) -> ((j, i), fst $ flow M.! (j, i), flip (-)))
+            | otherwise = Nothing
+            where (l, u) = flow M.! (i, j)
+
+        leavingF :: (Show i, Ix i) => GraphTopo i -> Flow i (Int, Int) -> i -> [(i, (i, i) -> ((i, i), Int, Int -> Int -> Int))]
+        leavingF topo flow f = forward ++ backward
+            where
+                forward = mapMaybe (goodForward flow) (topoLeaving topo f)
+                backward = mapMaybe (goodBackwards flow) (topoEntering topo f)
+
 
 maxFlow' :: (Show i, Ix i) => Flow i Int -> i -> i -> Flow i Int
 maxFlow' flow start end = maxFlow topo start end flow

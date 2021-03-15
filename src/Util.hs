@@ -4,6 +4,7 @@ where
 import           Control.Applicative
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import Data.Monoid
+import qualified Data.Map as M
 
 if' :: Bool -> a -> a -> a
 if' True  x _ = x
@@ -41,3 +42,8 @@ applyAt f i (x:xs) = x : applyAt f (i-1) xs
 orElse :: Maybe a -> a -> a
 orElse (Just x) _ = x
 orElse _ x = x
+
+
+applyAll :: (Ord i) => M.Map i a -> [(i, a -> a)] -> M.Map i a
+applyAll map [] = map
+applyAll map ((key, alter):xs) = M.adjust alter key $ applyAll map xs
