@@ -11,7 +11,7 @@ main = do
     -- print $ topoDfs' topo 0
     -- print $ topoDfs topo 0
     -- print $ topoBfs topo 0
-    print $ topoPath (map (,id) . topoLeaving' topo) 0 4
+    print $ topoPath (map (\x -> (x, x)) . topoLeaving' topo) 0 4
     putStr "Entering 2: "
     print $ topoEntering topo 2
     putStr "Leaving 2: "

@@ -112,18 +112,18 @@ topoDfs' topo start = St.evalState (dfs topo start) Set.empty
                     return $ rest Seq.>< cum
             foldM f Seq.empty children
 
-topoPath :: (Show i, Ord i) => (i -> [(i, (i, i) -> b)]) -> i -> i -> Maybe [b]
+topoPath :: (Show i, Ord i) => (i -> [(i, b)]) -> i -> i -> Maybe [b]
 topoPath topo start end = St.evalState (path topo start end) Set.empty
     where
-        path :: (Show i, Ord i) => (i -> [(i, (i, i) -> b)]) -> i -> i -> St.State (Set.Set i) (Maybe [b])
+        path :: (Show i, Ord i) => (i -> [(i, b)]) -> i -> i -> St.State (Set.Set i) (Maybe [b])
         path topo start end | start == end = return $ Just []
         path topo start end = do
             St.modify (Set.insert start)
         -- let children = map snd $ topoLeaving topo start
             let children = topo start
-                f (child, trans) = do
+                f (child, d) = do
                     done <- Set.member child <$> St.get
-                    if' done (return Nothing) $ ((trans (start, child):) <$>) <$> path topo child end
+                    if' done (return Nothing) $ ((d:) <$>) <$> path topo child end
             foldl (<|>) Nothing <$> mapM f children
 
 
@@ -144,21 +144,21 @@ maxFlow topo start end flow = M.map fst $ maxFlow'' topo start end (M.map(0,) fl
                     path' = map (\(key, _, f) -> (key, Data.Bifunctor.first (f minDiff))) path
                     newFlow = applyAll flow path'
 
-        goodForward :: (Ord i) => Flow i (Int, Int) -> (i, i) -> Maybe (i, (i, i) -> ((i, i), Int, Int -> Int -> Int))
+        goodForward :: (Ord i) => Flow i (Int, Int) -> (i, i) -> Maybe (i, ((i, i), Int, Int -> Int -> Int))
         goodForward flow i
             -- (key, capacity - flow, apply plus)
-            | l < u     = Just (snd i, \key -> (key, uncurry (flip (-)) $ flow M.! key, (+)))
+            | l < u     = Just (snd i, (i, uncurry (flip (-)) $ flow M.! i, (+)))
             | otherwise = Nothing
             where (l, u) = flow M.! i
 
-        goodBackwards :: (Ord i) => Flow i (Int, Int) -> (i, i) -> Maybe (i, (i, i) -> ((i, i), Int, Int -> Int -> Int))
+        goodBackwards :: (Ord i) => Flow i (Int, Int) -> (i, i) -> Maybe (i, ((i, i), Int, Int -> Int -> Int))
         goodBackwards flow (i, j)
             -- (inverted key 'back edge', current flow, apply minus)
-            | l > 0     = Just (i, \(i, j) -> ((j, i), fst $ flow M.! (j, i), flip (-)))
+            | l > 0     = Just (i, ((i, j), fst $ flow M.! (i,j), flip (-)))
             | otherwise = Nothing
             where (l, u) = flow M.! (i, j)
 
-        leavingF :: (Show i, Ix i) => GraphTopo i -> Flow i (Int, Int) -> i -> [(i, (i, i) -> ((i, i), Int, Int -> Int -> Int))]
+        leavingF :: (Show i, Ix i) => GraphTopo i -> Flow i (Int, Int) -> i -> [(i, ((i, i), Int, Int -> Int -> Int))]
         leavingF topo flow f = forward ++ backward
             where
                 forward = mapMaybe (goodForward flow) (topoLeaving topo f)
