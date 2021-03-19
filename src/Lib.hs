@@ -44,50 +44,23 @@ handleState :: [Planet] -> IO Moves
 handleState state = do
     -- print state
     time <- getMicros
-    actions <- calculateActions (time + 100000) state -- This is shorter (here 0.1 seconds)
-    return $ Moves $ concatMap actionToMove actions
-
-
-actionToMove :: Action -> [JsonMove]
-actionToMove Action {participation=parts, target=target} = map f parts
-    where f (p, force) = JsonMove (Types.name p) (Types.name target) force
+    let suppliers = buildSuppliers state
+        actionGraph = buildActionGraph state
+    actions <- calculateActions (time + 1000) suppliers actionGraph -- This is shorter (here 0.1 seconds)
+    return $ intoMoves actions
 
 
 -- |Timeout -> State -> Actions
-calculateActions :: Int -> [Planet] -> IO [Action]
-calculateActions tt state =
+calculateActions :: Int -> Suppliers -> ActionGraph -> IO ActionGraph
+calculateActions tt sups ag =
     -- do
     -- bestMove <- bestMove state
     -- return $ maybeToList $ traceShowId bestMove
     do
-    time <- getMicros
-    traceShowM state
-    action <- timeout (tt - time) (bestMove state)
-    case action of
-        Nothing -> return []
-        Just Nothing -> return []
-        Just (Just x) -> (x:) <$> calculateActions tt (applyAction state $ traceShowId x)
-
-
-applyAction :: [Planet] -> Action -> [Planet]
-applyAction ps Action{offensive=off, participation=parts, target=p} = p'
-    where
-        -- ps' = filter (/= p) ps
-        foldF = if off
-                then addExpedition subtract
-                else addExpedition (+)
-        mapF (from, amount) = (from, p, amount)
-        p' = foldl foldF ps $ map mapF parts
-
--- TODO eigenlijk wil je het omgekeerd doen, maar ja
-addExpedition :: (Int -> Int -> Int) -> [Planet] -> (Planet, Planet, Int) -> [Planet]
-addExpedition addF state (from, to, a) = state
-    & traverse . filtered (==to)   . field @"power" . traverseFrom ttl %~ addF a
-    & traverse . filtered (==from) . field @"power" . traverseFrom 0   %~ subtract a
-    where
-        ttl = distance to from
-        traverseFrom at = traversed . ifiltered (\i _ -> i >= at)
-
--- Failed, Succeeded with, Succeeded without (empty)
-bestMove :: [Planet] -> IO (Maybe Action)
-bestMove state = pure  $ maxBy actionPower $ allActions state
+        time <- getMicros
+        action <- timeout (tt - time) (return $ tryApply sups ag)
+        case action of
+            Nothing -> return ag
+            Just (False, _, ag') -> return ag'
+            -- Just (True, sups', ag') -> return ag'
+            Just (True, sups', ag') -> calculateActions tt sups' ag'

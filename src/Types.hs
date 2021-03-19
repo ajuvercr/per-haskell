@@ -1,4 +1,3 @@
-
 {-# LANGUAGE DataKinds                 #-}
 {-# LANGUAGE DeriveGeneric             #-}
 {-# LANGUAGE DuplicateRecordFields     #-}
@@ -38,17 +37,17 @@ type Coord = (Float, Float)
 data Alliance  = Hostile | Friendly | Neutral deriving (Show, Eq, Ord)
 
 data Planet =
-     Planet { name      :: String
-            , loc       :: Coord
-            , alliance  :: Alliance
-            , power     :: [Int]
+     Planet { name       :: String
+            , loc        :: Coord
+            , alliance   :: Alliance
+            , powerStart :: Int
+            , powerSub   :: [Int -> Int]
             } deriving (Generic)
 
 instance Show Planet where
 --   show Planet{Types.name=n, loc=l, alliance=a, Types.power=p} = "{ \"name\": " ++ show n ++ ", \"loc\": " ++ show l ++ ", \"alliance\": " ++ show a ++ ", \"power\": " ++ show pp
     -- where pp = take 5 p
-
-    show Planet{Types.name=n, loc=l, alliance=a, Types.power=p} = show n ++ "@" ++ show l ++ " " ++ show a ++ " " ++ show (take 10 p)
+    show Planet{Types.name=n, loc=l, alliance=a, powerStart=ps, powerSub=pfs} = show n ++ "@" ++ show l ++ " " ++ show a ++ " " ++ show (take 10 $ cumApply ps pfs)
 
 instance Eq Planet where
     p1 == p2 = Types.name p1 == Types.name p2
@@ -89,16 +88,14 @@ getAlliance _ = Hostile
 
 
 transformPlanet :: [JsonExpedition] -> JsonPlanet -> Planet
-transformPlanet exps (JsonPlanet name x y owner power) = Planet name (x, y) alliance p
+transformPlanet exps (JsonPlanet name x y owner power) = Planet name (x, y) alliance power p
     where
         alliance = getAlliance owner
-        base = if alliance == Neutral
-               then repeat power
-               else [power..]
+        base = repeat Prelude.id
         important = filter (\e -> destination e == name) exps
         update base exp = if sender exp == owner
-                          then applyAt (+ ship_count exp) (ttl exp) base
-                          else applyAt (subtract $ ship_count exp) (ttl exp) base
+                          then applyAt ((+ ship_count exp) . ) (ttl exp) base
+                          else applyAt ((subtract $ ship_count exp) . ) (ttl exp) base
         p = foldl update base important
 
 
@@ -113,7 +110,7 @@ notYours = filter (\x -> alliance x /= Friendly)
 
 
 powerAt :: Planet -> Int -> Int
-powerAt Planet {Types.power=p} at = p!!at
+powerAt Planet {powerStart=ps, powerSub=pfs} at = (cumApply ps pfs) !!at
 
 
 -- |(Id, Options)

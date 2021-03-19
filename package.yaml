@@ -32,6 +32,7 @@ dependencies:
 - generic-lens
 - containers
 - mtl
+- sorted-list
 
 library:
   source-dirs:

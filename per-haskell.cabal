@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 1ee8315d1a790bf6bd84724873821c9629f81f39cd938925ed82ec2649c20ec0
+-- hash: 621dfead53d458bed7c375845e64320d530cd8ce8d2b6c057af01699bd56a9df
 
 name:           per-haskell
 version:        0.1.0.0
@@ -48,6 +48,7 @@ library
     , generic-lens
     , lens
     , mtl
+    , sorted-list
     , text
     , time
     , utf8-string
@@ -69,6 +70,7 @@ executable per-haskell-exe
     , lens
     , mtl
     , per-haskell
+    , sorted-list
     , text
     , time
     , utf8-string
@@ -90,6 +92,7 @@ executable test-exe
     , lens
     , mtl
     , per-haskell
+    , sorted-list
     , text
     , time
     , utf8-string
@@ -114,6 +117,7 @@ test-suite per-haskell-test
     , lens
     , mtl
     , per-haskell
+    , sorted-list
     , text
     , time
     , utf8-string

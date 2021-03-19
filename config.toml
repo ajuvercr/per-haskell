@@ -1,3 +1,4 @@
 server = "ws://games.zeus.gent:8080"
 frontend = "https://games.zeus.gent"
 bot_argv = ["./per-haskell"]
+bot_token = "f7ecbf2382dff99ab592588cdc1aa2254a03533d39507a05c830d89b7c76c34a"

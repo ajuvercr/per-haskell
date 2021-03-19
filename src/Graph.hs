@@ -73,7 +73,6 @@ topoBfs topo start = St.evalState (bfs topo $ Seq.singleton start) Set.empty
             return $ outs Seq.>< rest
 
 
-
 topoDfs :: (Show i, Ix i) => GraphTopo i -> i -> Seq (i, i)
 topoDfs topo start = St.evalState (dfs topo start) Set.empty
     where
@@ -129,8 +128,6 @@ topoPath topo start end = St.evalState (path topo start end) Set.empty
 
 -- No float please thanks
 type Flow i a = M.Map (i, i) a
-
-
 
 maxFlow :: (Show i, Ix i) => GraphTopo i -> i -> i -> Flow i Int -> Flow i Int
 maxFlow topo start end flow = M.map fst $ maxFlow'' topo start end (M.map(0,) flow)

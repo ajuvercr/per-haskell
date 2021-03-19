@@ -47,3 +47,8 @@ orElse _ x = x
 applyAll :: (Ord i) => M.Map i a -> [(i, a -> a)] -> M.Map i a
 applyAll map [] = map
 applyAll map ((key, alter):xs) = M.adjust alter key $ applyAll map xs
+
+
+cumApply :: a -> [a -> a] -> [a]
+cumApply a [] = []
+cumApply a (f:xs) = f a : cumApply (f a) xs
