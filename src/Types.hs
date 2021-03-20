@@ -91,7 +91,7 @@ transformPlanet :: [JsonExpedition] -> JsonPlanet -> Planet
 transformPlanet exps (JsonPlanet name x y owner power) = Planet name (x, y) alliance power p
     where
         alliance = getAlliance owner
-        base = repeat Prelude.id
+        base = alliance == Neutral ? repeat Prelude.id :? repeat (+1)
         important = filter (\e -> destination e == name) exps
         update base exp = if sender exp == owner
                           then applyAt ((+ ship_count exp) . ) (ttl exp) base

@@ -16,7 +16,7 @@ import qualified Data.Set as Set
 import qualified Control.Monad.State.Lazy as St
 import Control.Monad
 import Data.Functor
-import Util (if', applyAll)
+import Util (applyAll, Cond(..), (?))
 import Control.Applicative ((<|>))
 import qualified Control.Arrow as Data.Bifunctor
 
@@ -107,7 +107,7 @@ topoDfs' topo start = St.evalState (dfs topo start) Set.empty
             let children = map snd $ topoLeaving topo start
                 f cum child = do
                     done <- Set.member child <$> St.get
-                    rest <- if' done (return Seq.empty) $ ((start, child) Seq.<|) <$> dfs topo child
+                    rest <- done ? return Seq.empty :? ((start, child) Seq.<|) <$> dfs topo child
                     return $ rest Seq.>< cum
             foldM f Seq.empty children
 
@@ -122,7 +122,7 @@ topoPath topo start end = St.evalState (path topo start end) Set.empty
             let children = topo start
                 f (child, d) = do
                     done <- Set.member child <$> St.get
-                    if' done (return Nothing) $ ((d:) <$>) <$> path topo child end
+                    done ? return Nothing :? ((d:) <$>) <$> path topo child end
             foldl (<|>) Nothing <$> mapM f children
 
 

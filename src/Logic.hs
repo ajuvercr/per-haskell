@@ -101,28 +101,21 @@ buildActionSupplier state target = ba (addTarget target) $ sortOnDistance target
                 (\x -> ActionSupplier x target (transform d) (ba transform rest) True) <$> calcAp p target d <|> ba transform rest
         ba _ [] = Nothing
 
-threshhold :: Float
-threshhold = 100.0
+threshold :: Float
+threshold = 100.0
 
 -- Minimal is better
 calcAp :: Planet -> Planet -> Int -> Maybe Float
 calcAp from target d
-    | vat > 0 && o == Friendly = Nothing
-    | vat < 0 && o /= Friendly = Nothing
-    | o == Friendly            = Just $ 10 * d' + tt
-    | otherwise                = Just $ 0.8 * d' + tt
+    | vat > 0 && o == Friendly = Nothing -- Don't send if it's friendly and stays friendly
+    | vat < 0 && o /= Friendly = Nothing -- Don't send if it's hostile but will convert
+    | o == Friendly            = Just $ 1.2 * d' -- Defense is useless
+    | otherwise                = Just $ 0.8 * d' -- Offense is king
     where
         vat = powerAt target d
         tt = 0
-        -- tt = if' (vat < 0) (-1) 0
         o = alliance target
         d' = fromIntegral d :: Float
-
--- calcAp _ sc d
---     | sc < 0 = 0.8 * d'
---     | sc == 0 = 0.5 * d'
---     | otherwise  = 1000 * d'
---     where d' = fromIntegral d :: Float
 
 
 buildSuppliers :: [Planet] -> Suppliers
@@ -168,10 +161,8 @@ popSupplier s = case SL.uncons s of
             let f = Logic.transform a
                 value = Logic.ap a
                 a' = Logic.next a
-            if value > threshhold
-            then Nothing
-            else case a' of
-                Just a'' -> Just (\x -> if' x (SL.insert a'' s') s', f)
+            case a' of
+                Just a'' -> Just (\x -> x ? SL.insert a'' s' :? s', f)
                 Nothing  -> Just (const s', f)
         Nothing      -> Nothing
 
@@ -180,6 +171,6 @@ tryApply :: Suppliers -> ActionGraph -> (Bool, Suppliers, ActionGraph)
 tryApply suppliers graph = case popSupplier suppliers of
         Just (s_f, f) -> let ag = f graph
                              valid = validGraph ag
-                             ag' = if' valid ag graph
+                             ag' = valid ? ag :? graph
                        in (True, s_f valid, ag')
         Nothing -> (False, suppliers, graph)

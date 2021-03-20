@@ -6,12 +6,19 @@ import Data.Time.Clock.POSIX (getPOSIXTime)
 import Data.Monoid
 import qualified Data.Map as M
 
-if' :: Bool -> a -> a -> a
-if' True  x _ = x
-if' False _ y = y
+
+data Cond a = a :? a
+
+infixl 0 ?
+infixl 1 :?
+
+(?) :: Bool -> Cond a -> a
+True  ? (x :? _) = x
+False ? (_ :? y) = y
+
 
 xBy :: (b -> b -> Bool) -> (a -> b) -> [a] -> Maybe a
-xBy g f = foldl (\p a -> (\x -> if' (g (f x) (f a)) x a) <$> p <|> Just a) Nothing
+xBy g f = foldl (\p a -> (\x -> g (f x) (f a) ? x :? a) <$> p <|> Just a) Nothing
 
 
 minBy :: Ord b  => (a -> b) -> [a] -> Maybe a
