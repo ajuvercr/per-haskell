@@ -3,10 +3,12 @@
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE TypeApplications          #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Lib
     ( perHaskell
     , commutative
+    , perHaskellWeb
     )
 where
 
@@ -25,6 +27,17 @@ import Control.Lens
 import Data.Generics.Product
 import Data.Generics.Sum
 
+import Data.Binary.Builder (putStringUtf8)
+import Network.Wai
+import Network.Wai.Handler.Warp
+
+import Network.Wai (responseBuilder)
+import Network.Wai.Handler.Warp
+import Network.HTTP.Types (status200, status404, ResponseHeaders, hContentType)
+
+import Data.ByteString.Lazy(unpack)
+import Data.Text.Internal.Unsafe.Char(unsafeChr8)
+
 perHaskell :: IO ()
 perHaskell = do
     line <- getLine
@@ -33,6 +46,21 @@ perHaskell = do
         Right x -> putStrLn x >> hFlush stdout
         Left x -> hPutStrLn stderr x
     perHaskell
+
+perHaskellWeb :: Int -> IO ()
+perHaskellWeb port = do
+    putStrLn $ "Listening on port " ++ show port
+    run port app
+
+headers :: ResponseHeaders
+headers = [ (hContentType,  "application/json") ]
+
+app req respond = do
+    line <- map  unsafeChr8 <$> unpack <$> strictRequestBody req
+    out <- handleLine line
+    respond $ case out of
+        Right x -> responseBuilder status200 headers $ putStringUtf8 x
+        Left x -> responseBuilder status404 headers $ putStringUtf8 x
 
 
 handleLine :: String -> IO (Either String String)

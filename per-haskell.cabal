@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 621dfead53d458bed7c375845e64320d530cd8ce8d2b6c057af01699bd56a9df
+-- hash: ea2098705816b06ffb2dc91e0efc4a2a1883c4a8f117d6609aa64d311d16071f
 
 name:           per-haskell
 version:        0.1.0.0
@@ -41,17 +41,21 @@ library
   build-depends:
       aeson
     , base >=4.7 && <5
+    , binary
     , bytestring
     , containers
     , either
     , extra
     , generic-lens
+    , http-types
     , lens
     , mtl
     , sorted-list
     , text
     , time
     , utf8-string
+    , wai
+    , warp
   default-language: Haskell2010
 
 executable per-haskell-exe
@@ -62,11 +66,13 @@ executable per-haskell-exe
   build-depends:
       aeson
     , base >=4.7 && <5
+    , binary
     , bytestring
     , containers
     , either
     , extra
     , generic-lens
+    , http-types
     , lens
     , mtl
     , per-haskell
@@ -74,6 +80,34 @@ executable per-haskell-exe
     , text
     , time
     , utf8-string
+    , wai
+    , warp
+  default-language: Haskell2010
+
+executable per-haskell-web-exe
+  main-is: Web.hs
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      aeson
+    , base >=4.7 && <5
+    , binary
+    , bytestring
+    , containers
+    , either
+    , extra
+    , generic-lens
+    , http-types
+    , lens
+    , mtl
+    , per-haskell
+    , sorted-list
+    , text
+    , time
+    , utf8-string
+    , wai
+    , warp
   default-language: Haskell2010
 
 executable test-exe
@@ -84,11 +118,13 @@ executable test-exe
   build-depends:
       aeson
     , base >=4.7 && <5
+    , binary
     , bytestring
     , containers
     , either
     , extra
     , generic-lens
+    , http-types
     , lens
     , mtl
     , per-haskell
@@ -96,6 +132,8 @@ executable test-exe
     , text
     , time
     , utf8-string
+    , wai
+    , warp
   default-language: Haskell2010
 
 test-suite per-haskell-test
@@ -109,11 +147,13 @@ test-suite per-haskell-test
   build-depends:
       aeson
     , base >=4.7 && <5
+    , binary
     , bytestring
     , containers
     , either
     , extra
     , generic-lens
+    , http-types
     , lens
     , mtl
     , per-haskell
@@ -121,4 +161,6 @@ test-suite per-haskell-test
     , text
     , time
     , utf8-string
+    , wai
+    , warp
   default-language: Haskell2010

@@ -33,6 +33,10 @@ dependencies:
 - containers
 - mtl
 - sorted-list
+- warp
+- wai
+- binary
+- http-types
 
 library:
   source-dirs:
@@ -49,7 +53,16 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - per-haskell
-
+  per-haskell-web-exe:
+    main:                Web.hs
+    other-modules:       []
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - per-haskell
   test-exe:
     main:                Test.hs
     other-modules:       []
@@ -71,3 +84,4 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - per-haskell
+
