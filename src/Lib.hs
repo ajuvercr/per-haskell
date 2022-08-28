@@ -2,7 +2,6 @@
 {-# LANGUAGE DuplicateRecordFields     #-}
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE TypeApplications          #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Lib
@@ -30,9 +29,6 @@ import Data.Generics.Sum
 import Data.Binary.Builder (putStringUtf8)
 import Network.Wai
 import Network.Wai.Handler.Warp
-
-import Network.Wai (responseBuilder)
-import Network.Wai.Handler.Warp
 import Network.HTTP.Types (status200, status404, ResponseHeaders, hContentType)
 
 import Data.ByteString.Lazy(unpack)
@@ -56,7 +52,7 @@ headers :: ResponseHeaders
 headers = [ (hContentType,  "application/json") ]
 
 app req respond = do
-    line <- map  unsafeChr8 <$> unpack <$> strictRequestBody req
+    line <- map unsafeChr8 . unpack <$> strictRequestBody req
     out <- handleLine line
     respond $ case out of
         Right x -> responseBuilder status200 headers $ putStringUtf8 x
@@ -81,9 +77,6 @@ handleState state = do
 -- |Timeout -> State -> Actions
 calculateActions :: Int -> Suppliers -> ActionGraph -> IO ActionGraph
 calculateActions tt sups ag =
-    -- do
-    -- bestMove <- bestMove state
-    -- return $ maybeToList $ traceShowId bestMove
     do
         time <- getMicros
         action <- timeout (tt - time) (return $ tryApply sups ag)
@@ -92,3 +85,4 @@ calculateActions tt sups ag =
             Just (False, _, ag') -> return ag'
             -- Just (True, sups', ag') -> return ag'
             Just (True, sups', ag') -> calculateActions tt sups' ag'
+
